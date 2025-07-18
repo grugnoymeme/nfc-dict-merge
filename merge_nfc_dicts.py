@@ -3,7 +3,7 @@
 import sys
 import os
 
-COL = 6  # colonne per stampa ordinata
+COL = 6
 
 def read_and_validate_keys(file_path, invalid_keys, duplicates_tracker, file_tag):
     seen = set()
@@ -53,7 +53,6 @@ def main():
 
     set_A, set_B = set(list_A), set(list_B)
 
-    # Differenze tra i due file
     diff_AB = sorted(set_A - set_B)
     diff_BA = sorted(set_B - set_A)
     common_keys = set_A & set_B
@@ -64,7 +63,6 @@ def main():
     print("-------")
     print(f"Found {len(common_keys)} common keys.")
 
-    # Chiedi directory valida per il file finale
     while True:
         directory = input("Enter the directory where to save the merged file: ").strip()
         if os.path.isdir(directory):
@@ -72,7 +70,6 @@ def main():
         else:
             print(f"Error: directory '{directory}' does not exist. Please try again.")
 
-    # Chiedi filename fino a che non è valido e non esiste
     while True:
         filename = input("Enter the filename (e.g. merged_dict.nfc): ").strip()
         full_path = os.path.join(directory, filename)
@@ -81,7 +78,6 @@ def main():
         else:
             break
 
-    # Unione e scrittura
     merged_set = (set_A | set_B) - duplicates_found
     merged_list = sorted(merged_set)
 
@@ -94,7 +90,6 @@ def main():
         print(f"❌ Error saving file: {e}")
         sys.exit(1)
 
-    # Elenco chiavi duplicate
     if duplicates_found:
         print("-------")
         print("These keys were found duplicated in the same input file and have been removed from the final output:")
@@ -102,7 +97,6 @@ def main():
         for i in range(0, len(duplicates_list), COL):
             print(" ".join(duplicates_list[i:i+COL]))
 
-    # Elenco chiavi non valide
     if invalid_keys:
         print("-------")
         print("These keys were ignored due to invalid length (not 12 characters):")

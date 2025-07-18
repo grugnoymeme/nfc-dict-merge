@@ -3,72 +3,68 @@
 import sys
 import os
 
-COL = 6
+COL = 6  # colonne per stampa ordinata
 
-def read_and_validate_keys(file_path):
+def read_and_validate_keys(file_path, invalid_keys, duplicates_tracker, file_tag):
+    seen = set()
+    valid_keys = []
+
     with open(file_path, 'r', encoding="utf-8") as fd:
-        lines = []
         for line_num, line in enumerate(fd, 1):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            line = line.upper()  # convert to uppercase
-            if len(line) != 12:
-                print(f"Errore: la chiave alla riga {line_num} di '{file_path}' non è lunga 12 caratteri: '{line}'")
-                sys.exit(1)
-            lines.append(line)
-    return lines
+            key = line.upper()
+            if len(key) != 12:
+                invalid_keys.append((file_tag, line_num, line))
+                continue
+            if key in seen:
+                duplicates_tracker.add(key)
+                continue
+            seen.add(key)
+            valid_keys.append(key)
+
+    return valid_keys
+
+def print_key_block(title, keys):
+    print("-------")
+    print(f"{title} = {len(keys)}")
+    for i in range(0, len(keys), COL):
+        print(" ".join(keys[i:i+COL]))
 
 def main():
     if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <file1.nfc> <file2.nfc>")
+        print(f"Usage: {sys.argv[0]} <file1> <file2>")
         sys.exit(1)
 
-    file1 = sys.argv[1]
-    file2 = sys.argv[2]
+    file1, file2 = sys.argv[1], sys.argv[2]
+    print(f"Merging:\n- {file1}\n- {file2}")
 
-    print(file1, file2)
+    invalid_keys = []
+    duplicates_found = set()
 
-    list_A = read_and_validate_keys(file1)
-    list_B = read_and_validate_keys(file2)
-
-    print("list_A", len(list_A), file1)
-    print("list_B", len(list_B), file2)
-
-    set_A = set(list_A)
-    set_B = set(list_B)
-
-    diff_AB = set_A.difference(set_B)
-    print("-------")
-    print("diff list_A - list_B =", len(diff_AB))
-    print(f"Unique to {file1}")
-    list_AB = sorted(diff_AB)
-    for X in range(0, len(list_AB), COL):
-        print(" ".join(list_AB[X:X + COL]))
-
-    diff_BA = set_B.difference(set_A)
-    print("-------")
-    print("diff list_B - list_A =", len(diff_BA))
-    print(f"Unique to {file2}")
-    list_BA = sorted(diff_BA)
-    for X in range(0, len(list_BA), COL):
-        print(" ".join(list_BA[X:X + COL]))
-
-    common_keys = set_A.intersection(set_B)
-    num_common = len(common_keys)
+    list_A = read_and_validate_keys(file1, invalid_keys, duplicates_found, "file1")
+    list_B = read_and_validate_keys(file2, invalid_keys, duplicates_found, "file2")
 
     print("-------")
-    print(f"Found {num_common} common keys.")
+    print("Valid keys loaded:")
+    print(f"{file1}: {len(list_A)} keys")
+    print(f"{file2}: {len(list_B)} keys")
 
-    if num_common > 0:
-        answer = input("Proceed to create a merged file without duplicates? (y/n): ").strip().lower()
-        if answer not in ['y', 'yes']:
-            print("Thanks, goodbye.")
-            sys.exit(0)
-    else:
-        print("No duplicate keys found, proceeding to create the merged file.")
+    set_A, set_B = set(list_A), set(list_B)
 
-    # Ask for directory until valid
+    # Differenze tra i due file
+    diff_AB = sorted(set_A - set_B)
+    diff_BA = sorted(set_B - set_A)
+    common_keys = set_A & set_B
+
+    print_key_block(f"Unique to {file1}", diff_AB)
+    print_key_block(f"Unique to {file2}", diff_BA)
+
+    print("-------")
+    print(f"Found {len(common_keys)} common keys.")
+
+    # Chiedi directory valida per il file finale
     while True:
         directory = input("Enter the directory where to save the merged file: ").strip()
         if os.path.isdir(directory):
@@ -76,7 +72,7 @@ def main():
         else:
             print(f"Error: directory '{directory}' does not exist. Please try again.")
 
-    # Ask for filename until valid and not existing
+    # Chiedi filename fino a che non è valido e non esiste
     while True:
         filename = input("Enter the filename (e.g. merged_dict.nfc): ").strip()
         full_path = os.path.join(directory, filename)
@@ -85,16 +81,33 @@ def main():
         else:
             break
 
-    union_set = set_A.union(set_B)
-    union_list = sorted(union_set)
+    # Unione e scrittura
+    merged_set = (set_A | set_B) - duplicates_found
+    merged_list = sorted(merged_set)
 
     try:
         with open(full_path, 'w', encoding="utf-8") as f:
-            for line in union_list:
-                f.write(line + "\n")
-        print(f"Merged file saved to '{full_path}' with {len(union_list)} unique 12-char uppercase keys.")
+            for key in merged_list:
+                f.write(key + "\n")
+        print(f"\nMerged file saved to '{full_path}' with {len(merged_list)} unique 12-char uppercase keys.\n")
     except Exception as e:
-        print(f"Error saving file: {e}")
+        print(f"❌ Error saving file: {e}")
+        sys.exit(1)
+
+    # Elenco chiavi duplicate
+    if duplicates_found:
+        print("-------")
+        print("These keys were found duplicated in the same input file and have been removed from the final output:")
+        duplicates_list = sorted(duplicates_found)
+        for i in range(0, len(duplicates_list), COL):
+            print(" ".join(duplicates_list[i:i+COL]))
+
+    # Elenco chiavi non valide
+    if invalid_keys:
+        print("-------")
+        print("These keys were ignored due to invalid length (not 12 characters):")
+        for tag, line_num, line in invalid_keys:
+            print(f"{tag}, line {line_num}: '{line}'")
 
 if __name__ == "__main__":
     main()

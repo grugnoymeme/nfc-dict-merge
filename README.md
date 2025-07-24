@@ -4,7 +4,7 @@ A simple tool to merge different NFC dictionaries by removing duplicate keys and
 
 ## Usage
 ```
-python3 merge_nfc_dicts.py first_dict.keys second_dict.txt
+python3 merge_nfc_dicts.py first_dict.keys second_dict.txt third... fourth....
 ```
 
 You can use any file extension. The script will:
